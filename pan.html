@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wingo Live Panel — Final</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{font-family:"Outfit",system-ui,Arial;background:#0d0f1a;color:#fff;overflow:hidden}
+
+    /* background iframe */
+    iframe.bg{position:fixed;inset:0;width:100%;height:100%;border:0;z-index:0}
+
+    /* floating movable icon */
+    .float{
+      position:fixed; bottom:14px; right:14px; z-index:3000;
+      width:48px; height:48px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(145deg,#00ffa3,#2ee6ff);
+      box-shadow:0 12px 30px rgba(0,0,0,.45);
+      cursor:pointer; user-select:none; touch-action:none;
+    }
+    .float i{color:#000; font-size:18px; font-weight:900}
+
+    /* overlay panel */
+    .overlay{
+      position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center;
+      background:rgba(0,0,0,.55); backdrop-filter:blur(4px); z-index:2900; padding-bottom:28px;
+    }
+    .panel{
+      width:94%; max-width:380px; border-radius:14px; overflow:hidden;
+      background:#1b1e2d; box-shadow:0 18px 48px rgba(0,0,0,.6);
+    }
+    .panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px}
+    .panel-head .title{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+    .panel-body{padding:12px;display:flex;flex-direction:column;gap:10px}
+
+    .info-strip{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;background:#141722;font-size:12px}
+    .info-strip .next{font-weight:700}
+
+    .result-box{display:none;text-align:center;padding:10px;border-radius:10px;background:#0c0f12;font-weight:700;font-size:16px}
+    @keyframes fadePulse{0%{opacity:.2}50%{opacity:1}100%{opacity:.2}}
+    .result-box.big{animation:fadePulse 2s infinite;color:#00ffa3}
+    .result-box.small{animation:fadePulse 2s infinite;color:#ff4d4f}
+    .result-box.predicting{color:#ffd166}
+
+    .server-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:10px;background:#0f1420;font-size:12px}
+    .server-state.on{color:#00ffa3;font-weight:700}
+    .server-state.off{color:#ff4d4f;font-weight:700}
+
+    .toggle{position:relative;width:42px;height:22px;border-radius:20px;background:#232734;padding:3px;cursor:pointer}
+    .toggle .knob{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .22s}
+    .toggle.on{background:linear-gradient(90deg,#00ffa3,#2ee6ff)}
+    .toggle.on .knob{transform:translateX(20px)}
+
+    .live-row{display:flex;gap:8px}
+    .slot{flex:1;padding:8px;border-radius:8px;background:#0f1420;font-size:12px}
+    .slot .tit{font-size:10px;color:#9ca3af}
+    .slot .txt{margin-top:6px;font-weight:700}
+
+    .button-row{display:flex;gap:8px}
+    .buy-btn,.enter-btn{flex:1;height:36px;border-radius:18px;border:0;font-size:13px;font-weight:600;cursor:pointer}
+    .buy-btn{background:linear-gradient(90deg,#00ffa3,#2ee6ff);color:#000}
+    .enter-btn{background:linear-gradient(90deg,#7c4dff,#b388ff);color:#fff}
+
+    .live-pill{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:14px;background:#fff;color:#000;font-size:12px;font-weight:700}
+    .live-pill .dot{width:8px;height:8px;border-radius:50%;background:#000;animation:dotFade 1.2s infinite}
+    @keyframes dotFade{0%{opacity:.25}50%{opacity:1}100%{opacity:.25}}
+
+    /* modal (enter key) */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:3200}
+    .modal{width:92%;max-width:360px;background:#fff;color:#111;border-radius:12px;padding:14px;position:relative}
+    .modal h1{margin:0 0 8px;font-size:16px}
+    .key-input{width:100%;padding:10px;border-radius:8px;border:2px solid #0b0b0b;font-size:14px}
+    .verify-btn{margin-top:10px;width:100%;padding:10px;border-radius:8px;border:0;background:linear-gradient(90deg,#00e6ff,#00ffa3);font-weight:700}
+    .success-msg{display:none;margin-top:10px;padding:8px;border-radius:8px;text-align:center;font-weight:700}
+
+    /* redirect popup */
+    .redirect-popup{width:92%;max-width:360px;background:#0b1220;color:#fff;padding:16px;border-radius:12px;text-align:center}
+    .redirect-popup h3{margin:0 0 8px;font-size:16px}
+    .redirect-popup p{margin:0 0 12px;font-size:14px;color:#dbe9ff}
+    .redirect-actions{display:flex;gap:10px;justify-content:center}
+    .redirect-actions .btn{padding:8px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+    .btn-continue{background:linear-gradient(90deg,#00ffa3,#2ee6ff);color:#000}
+    .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,.12);color:#fff}
+
+    /* fullscreen countdown (also used for invalid-key redirect) */
+    .countdown-full{
+      position:fixed;left:50%;bottom:50%;transform:translate(-50%,50%);display:none;z-index:3500;
+      pointer-events:none;text-align:center;
+    }
+    .countdown-full .num{font-size:88px;font-weight:900;color:#fff;text-shadow:0 6px 40px rgba(0,0,0,.6)}
+    .countdown-full .caption{margin-top:8px;font-size:16px;color:#dbe9ff}
+
+    .toast{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;z-index:3600;background:#0f1420;color:#fff}
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+  <!-- background iframe -->
+  <iframe class="bg" src="https://bdgwina.top//#/register?invitationCode=372171400520"></iframe>
+
+  <!-- floating movable icon -->
+  <div class="float" id="floatBtn" title="Open panel"><i class="fa-solid fa-play"></i></div>
+
+  <!-- overlay panel -->
+  <div class="overlay" id="overlay">
+    <div class="panel" role="dialog" aria-modal="true">
+      <div class="panel-head">
+        <div class="title">
+          <span style="color:#00ffa3">BDGWIN FREE</span>
+          <a href="https://telegram.me/apkmodderkings" target="_blank" rel="noopener" style="color:#24A1DE;">
+            <i class="fa-brands fa-telegram"></i>
+          </a>
+          <span>APKMODDERKINGS</span>
+        </div>
+        <div class="live-pill"><div class="dot"></div><div>LIVE</div></div>
+      </div>
+
+      <div class="panel-body">
+        <div class="info-strip">
+          <div>Period: <span id="periodNumber">—</span></div>
+          <div class="next">Next in <span id="timerText">00:00</span></div>
+        </div>
+
+        <div class="result-box predicting" id="resultText">PREDICTING...</div>
+
+        <div class="server-row">
+          <div class="server-state off" id="serverStateText">Disconnected</div>
+          <div class="toggle" id="toggleWrap" aria-pressed="false"><div class="knob"></div></div>
+        </div>
+
+        <div class="live-row">
+          <div class="slot">
+            <div class="tit">Latest Winner</div>
+            <div class="txt" id="winnerText">UID 0000000 Win ₹0</div>
+          </div>
+          <div class="slot">
+            <div class="tit">Online</div>
+            <div class="txt" id="onlineUsers">190</div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="buy-btn" id="buyBtn">Buy Hack</button>
+          <button class="enter-btn" id="enterKeyBtn">Enter Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- enter-key modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <button id="modalClose" style="position:absolute;right:10px;top:8px;border:0;background:none;cursor:pointer;font-size:18px">✕</button>
+      <h1>Activate Premium</h1>
+      <p style="font-size:13px;color:#444;margin-bottom:8px">Password: <strong>duggia800</strong></p>
+      <input class="key-input" id="keyInput" placeholder="Enter Key" autocomplete="off" />
+      <button class="verify-btn" id="verifyKeyBtn">Verify Key</button>
+      <div class="success-msg" id="successMsg" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- redirect popup for correct key -->
+  <div class="modal-backdrop" id="redirectBackdrop" style="display:none;">
+    <div class="redirect-popup">
+      <h3>You're redirecting</h3>
+      <p>You're redirecting to premium vip users panel</p>
+      <div class="redirect-actions">
+        <button class="btn btn-continue" id="continueRedirect">Continue</button>
+        <button class="btn btn-cancel" id="cancelRedirect">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- fullscreen countdown (also used after invalid key) -->
+  <div class="countdown-full" id="countdownFull" aria-hidden="true">
+    <div class="num" id="countdownNum">3</div>
+    <div class="caption" id="countdownCaption"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* Elements */
+const floatBtn = document.getElementById('floatBtn');
+const overlay = document.getElementById('overlay');
+
+const toggleWrap = document.getElementById('toggleWrap');
+const serverStateText = document.getElementById('serverStateText');
+
+const resultText = document.getElementById('resultText');
+const periodNumberEl = document.getElementById('periodNumber');
+const timerText = document.getElementById('timerText');
+
+const winnerText = document.getElementById('winnerText');
+const onlineUsers = document.getElementById('onlineUsers');
+
+const buyBtn = document.getElementById('buyBtn');
+const enterKeyBtn = document.getElementById('enterKeyBtn');
+
+const modalBackdrop = document.getElementById('modalBackdrop');
+const modalClose = document.getElementById('modalClose');
+const verifyKeyBtn = document.getElementById('verifyKeyBtn');
+const keyInput = document.getElementById('keyInput');
+const successMsg = document.getElementById('successMsg');
+
+const redirectBackdrop = document.getElementById('redirectBackdrop');
+const continueRedirect = document.getElementById('continueRedirect');
+const cancelRedirect = document.getElementById('cancelRedirect');
+
+const countdownFull = document.getElementById('countdownFull');
+const countdownNum = document.getElementById('countdownNum');
+const countdownCaption = document.getElementById('countdownCaption');
+
+const toastEl = document.getElementById('toast');
+
+/* State */
+let serverOn = false;
+let winnerTimer = null;
+let usersTimer = null;
+let autoRedirectTimer = null;
+let currentUsers = 190;
+
+/* Toast helper */
+function toastMsg(txt){
+  toastEl.textContent = txt;
+  toastEl.classList.add('show');
+  setTimeout(()=> toastEl.classList.remove('show'), 1400);
+}
+
+/* Dragging / Click detection for float */
+let dragging = false;
+let dragOffsetX = 0, dragOffsetY = 0;
+let moved = false;
+
+floatBtn.addEventListener('pointerdown', (e) => {
+  dragging = true;
+  moved = false;
+  const r = floatBtn.getBoundingClientRect();
+  dragOffsetX = e.clientX - r.left;
+  dragOffsetY = e.clientY - r.top;
+  try { floatBtn.setPointerCapture(e.pointerId); } catch(e){}
+});
+window.addEventListener('pointermove', (e) => {
+  if(!dragging) return;
+  moved = true;
+  let x = e.clientX - dragOffsetX;
+  let y = e.clientY - dragOffsetY;
+  x = Math.max(6, Math.min(window.innerWidth - floatBtn.offsetWidth - 6, x));
+  y = Math.max(6, Math.min(window.innerHeight - floatBtn.offsetHeight - 6, y));
+  floatBtn.style.left = x + 'px';
+  floatBtn.style.top = y + 'px';
+  floatBtn.style.right = 'auto';
+  floatBtn.style.bottom = 'auto';
+});
+window.addEventListener('pointerup', (e) => {
+  try { floatBtn.releasePointerCapture(e.pointerId); } catch(e){}
+  dragging = false;
+  if(!moved){
+    // simple click
+    overlay.style.display = 'flex';
+  }
+});
+overlay.addEventListener('click', (e) => {
+  if(e.target === overlay) overlay.style.display = 'none';
+});
+
+/* Toggle server (start/stop simulations) */
+function setToggle(on){
+  toggleWrap.classList.toggle('on', on);
+  serverOn = !!on;
+  serverStateText.textContent = serverOn ? 'Connected' : 'Disconnected';
+  serverStateText.className = 'server-state ' + (serverOn ? 'on' : 'off');
+  if(serverOn){
+    startSimulations();
+    toastMsg('Server Connected');
+  } else {
+    stopSimulations();
+    toastMsg('Server Disconnected');
+  }
+}
+toggleWrap.addEventListener('click', () => setToggle(!serverOn));
+
+/* Modal open/close and Buy button */
+enterKeyBtn.addEventListener('click', () => {
+  keyInput.value = '';
+  successMsg.style.display = 'none';
+  successMsg.textContent = '';
+  keyInput.style.borderColor = '#0b0b0b';
+  modalBackdrop.style.display = 'flex';
+});
+modalClose.addEventListener('click', () => modalBackdrop.style.display = 'none');
+buyBtn.addEventListener('click', () => window.open('https://telegram.me/ZebDex','_blank'));
+
+/* Redirect popup handlers */
+function showRedirectPopup(){
+  redirectBackdrop.style.display = 'flex';
+  clearTimeout(autoRedirectTimer);
+  autoRedirectTimer = setTimeout(()=> {
+    window.location.href = 'https://apkkingbroo.github.io/paid/panel.html';
+  }, 2000);
+}
+continueRedirect.addEventListener('click', () => {
+  clearTimeout(autoRedirectTimer);
+  window.location.href = 'https://apkkingbroo.github.io/paid/panel.html';
+});
+cancelRedirect.addEventListener('click', () => {
+  clearTimeout(autoRedirectTimer);
+  redirectBackdrop.style.display = 'none';
+});
+
+/* Verify Key logic */
+verifyKeyBtn.addEventListener('click', () => {
+  const key = keyInput.value.trim();
+  if(key === 'duggia800'){
+    successMsg.style.display = 'block';
+    successMsg.style.background = '#e6fff3';
+    successMsg.style.color = '#0b6b45';
+    successMsg.textContent = 'Welcome Premium User';
+    toastMsg('Activated');
+    setTimeout(()=>{
+      modalBackdrop.style.display = 'none';
+      showRedirectPopup();
+    }, 600);
+  } else {
+    // Invalid key flow: show error, then fullscreen 3..2..1, then open ZebDex telegram link
+    successMsg.style.display = 'block';
+    successMsg.style.background = '#ffe6e6';
+    successMsg.style.color = '#b00020';
+    successMsg.textContent = '❌ Invalid Key';
+    keyInput.style.borderColor = '#ff4d4f';
+    toastMsg('Invalid Key');
+
+    // Show fullscreen countdown caption and numbers
+    let count = 3;
+    countdownCaption.textContent = 'Redirecting to buy key from ZebDex';
+    countdownNum.textContent = count;
+    countdownFull.style.display = 'block';
+    countdownFull.setAttribute('aria-hidden','false');
+
+    const iv = setInterval(()=>{
+      count--;
+      if(count > 0){
+        countdownNum.textContent = count;
+      } else {
+        clearInterval(iv);
+        countdownFull.style.display = 'none';
+        countdownFull.setAttribute('aria-hidden','true');
+        // open ZebDex link in new tab
+        try { window.open('https://telegram.me/ZebDex','_blank'); } catch(e){}
+      }
+    }, 1000);
+  }
+});
+
+/* Period / countdown logic */
+function setResult(kind){
+  resultText.className = 'result-box';
+  if(kind === 'BIG'){ resultText.textContent = 'BIG'; resultText.classList.add('big'); resultText.style.display = 'block'; }
+  else if(kind === 'SMALL'){ resultText.textContent = 'SMALL'; resultText.classList.add('small'); resultText.style.display = 'block'; }
+  else { resultText.textContent = 'PREDICTING...'; resultText.classList.add('predicting'); resultText.style.display = 'block'; }
+}
+
+function updatePeriod(){
+  if(!serverOn){
+    resultText.style.display = 'none';
+    return;
+  }
+  resultText.style.display = 'block';
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const year = now.getUTCFullYear();
+  const month = pad(now.getUTCMonth()+1);
+  const day = pad(now.getUTCDate());
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  const s = now.getUTCSeconds();
+
+  const periodNum = `${year}${month}${day}1000${10001 + (h*60 + m)}`;
+  periodNumberEl.textContent = periodNum;
+
+  const remain = 60 - s;
+  timerText.textContent = `00:${pad(remain)}`;
+
+  if(remain <= 5 && remain >= 1){
+    countdownFull.style.display = 'block';
+    countdownCaption.textContent = 'Launching result';
+    countdownNum.textContent = String(remain);
+    resultText.style.visibility = 'hidden';
+    countdownFull.setAttribute('aria-hidden','false');
+  } else {
+    countdownFull.style.display = 'none';
+    resultText.style.visibility = 'visible';
+    countdownFull.setAttribute('aria-hidden','true');
+  }
+
+  if(remain <= 59 && remain >= 55){
+    setResult('PREDICTING');
+  } else {
+    let lastTwo = periodNum.slice(-2);
+    let sum = lastTwo.split('').map(Number).reduce((a,b)=>a+b,0);
+    if(sum > 9) sum = String(sum).split('').map(Number).reduce((a,b)=>a+b,0);
+    setResult(sum >= 5 ? 'BIG' : 'SMALL');
+  }
+}
+setInterval(updatePeriod, 1000);
+
+/* Winner and Users generation logic */
+
+/* UID generation */
+function genUID7(){ return String(Math.floor(Math.random() * 9000000) + 1000000); }
+
+/* Price distribution
+   70% -> 1000..4000
+   20% -> 5000..14000
+   7%  -> 100..999
+   3%  -> 10000..25000
+*/
+function genPrice(){
+  const r = Math.random();
+  if(r < 0.70){
+    return Math.floor(Math.random() * 3001) + 1000; // 1000..4000
+  } else if(r < 0.90){
+    return Math.floor(Math.random() * 9001) + 5000; // 5000..14000
+  } else if(r < 0.97){
+    return Math.floor(Math.random() * 900) + 100; // 100..999
+  } else {
+    return Math.floor(Math.random() * 15001) + 10000; // 10000..25000
+  }
+}
+
+/* Smooth online users (190..215, step -2..+2) */
+function genUsers(){
+  const change = Math.floor(Math.random() * 5) - 2; // -2..+2
+  currentUsers += change;
+  if(currentUsers < 190) currentUsers = 190;
+  if(currentUsers > 215) currentUsers = 215;
+  return currentUsers;
+}
+
+/* Scheduler for winners */
+function scheduleWinner(){
+  if(winnerTimer) clearTimeout(winnerTimer);
+  const delay = Math.floor(Math.random() * 2300) + 1800; // 1800..4100 ms
+  winnerTimer = setTimeout(() => {
+    if(serverOn){
+      const uid = genUID7();
+      const price = genPrice();
+      winnerText.textContent = `UID ${uid} Win ₹${price.toLocaleString('en-IN')}`;
+    }
+    scheduleWinner();
+  }, delay);
+}
+
+/* Scheduler for users */
+function scheduleUsers(){
+  if(usersTimer) clearTimeout(usersTimer);
+  const delay = Math.floor(Math.random() * 1500) + 900; // 900..2400 ms
+  usersTimer = setTimeout(() => {
+    if(serverOn){
+      onlineUsers.textContent = genUsers();
+    }
+    scheduleUsers();
+  }, delay);
+}
+
+/* Start / stop simulations */
+function startSimulations(){
+  scheduleWinner();
+  scheduleUsers();
+}
+function stopSimulations(){
+  if(winnerTimer) clearTimeout(winnerTimer);
+  if(usersTimer) clearTimeout(usersTimer);
+  winnerTimer = null;
+  usersTimer = null;
+}
+
+/* Start connected by default (demo) */
+setToggle(true);
+
+/* Accessibility: prevent passive touchmove to allow dragging on some platforms */
+document.addEventListener('touchmove', function(){}, {passive:false});
+</script>
+</body>
+</html>
+
