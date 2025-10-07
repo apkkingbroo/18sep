@@ -296,7 +296,7 @@ enterKeyBtn.addEventListener('click', () => {
   modalBackdrop.style.display = 'flex';
 });
 modalClose.addEventListener('click', () => modalBackdrop.style.display = 'none');
-buyBtn.addEventListener('click', () => window.open('https://telegram.me/ZebDex','_blank'));
+buyBtn.addEventListener('click', () => window.open('https://telegram.me/krovnix','_blank'));
 
 /* Redirect popup handlers */
 function showRedirectPopup(){
@@ -339,7 +339,7 @@ verifyKeyBtn.addEventListener('click', () => {
 
     // Show fullscreen countdown caption and numbers
     let count = 3;
-    countdownCaption.textContent = 'Redirecting to buy key from ZebDex';
+    countdownCaption.textContent = 'Redirecting to buy key from krovnix';
     countdownNum.textContent = count;
     countdownFull.style.display = 'block';
     countdownFull.setAttribute('aria-hidden','false');
@@ -353,7 +353,7 @@ verifyKeyBtn.addEventListener('click', () => {
         countdownFull.style.display = 'none';
         countdownFull.setAttribute('aria-hidden','true');
         // open ZebDex link in new tab
-        try { window.open('https://telegram.me/ZebDex','_blank'); } catch(e){}
+        try { window.open('https://telegram.me/krovnix','_blank'); } catch(e){}
       }
     }, 1000);
   }
